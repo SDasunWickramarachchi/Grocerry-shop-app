@@ -290,8 +290,8 @@ export default function AdminView() {
         
         {/* SIDE NAVIGATION BAR */}
         <aside className="lg:col-span-3 space-y-2">
-          <div className="glass-panel p-3 rounded-2xl border border-[#ded0b6]/15 space-y-1">
-            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#ded0b6]/60">
+          <div className="glass-panel p-2 lg:p-3 rounded-2xl border border-[#ded0b6]/15 flex lg:block overflow-x-auto no-scrollbar gap-2 lg:space-y-1">
+            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-[#ded0b6]/60 hidden lg:block">
               Admin Navigation Menu
             </div>
 
@@ -302,13 +302,13 @@ export default function AdminView() {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`shrink-0 lg:w-full flex items-center justify-between px-3.5 py-2.5 lg:py-3 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap gap-3 ${
                     isActive
                       ? 'btn-warm shadow-lg scale-[1.02]'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 lg:gap-3">
                     <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#b08b68]'}`} />
                     <span>{item.label}</span>
                   </div>
@@ -815,14 +815,14 @@ export default function AdminView() {
                   <MessageSquare className="w-4 h-4 text-[#b08b68]" /> Recent Customer SMS Gateway Logs
                 </h3>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-2xl border border-slate-800">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-[#1a130e]/80 text-[#ded0b6] uppercase font-bold border-b border-[#ded0b6]/15">
                       <tr>
                         <th className="p-3">Time</th>
                         <th className="p-3">Recipient Phone</th>
-                        <th className="p-3">Notification Stage</th>
-                        <th className="p-3">Message Content</th>
+                        <th className="p-3">Stage</th>
+                        <th className="p-3 hidden sm:table-cell">Message Content</th>
                         <th className="p-3 text-right">Status</th>
                       </tr>
                     </thead>
@@ -836,7 +836,7 @@ export default function AdminView() {
                               {log.stage}
                             </span>
                           </td>
-                          <td className="p-3 text-slate-300 font-sans">{log.text}</td>
+                          <td className="p-3 text-slate-300 font-sans hidden sm:table-cell">{log.text}</td>
                           <td className="p-3 text-right">
                             <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[10px] font-sans">
                               {log.status}
