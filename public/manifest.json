@@ -1,0 +1,22 @@
+{
+  "short_name": "UNGI KADE",
+  "name": "UNGI KADE Grocery & Multi-Portal PWA",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3724/3724788.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3724/3724788.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./",
+  "background_color": "#1a130e",
+  "theme_color": "#905534",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "UNGI KADE online grocery shopping and multi-role store management app."
+}

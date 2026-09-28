@@ -1,0 +1,46 @@
+{
+  "categories": [
+    {
+      "id": "cat1",
+      "name": "Fresh Produce",
+      "description": "Farm fresh fruits & organic vegetables",
+      "image": "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80",
+      "icon": "Sparkles"
+    },
+    {
+      "id": "cat2",
+      "name": "Dairy & Eggs",
+      "description": "Fresh farm milk, cheeses & organic eggs",
+      "image": "https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=600&q=80",
+      "icon": "ShieldCheck"
+    },
+    {
+      "id": "cat3",
+      "name": "Bakery",
+      "description": "Freshly baked artisanal bread & pastries",
+      "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80",
+      "icon": "Tag"
+    },
+    {
+      "id": "cat4",
+      "name": "Beverages",
+      "description": "Premium coffee, juices & teas",
+      "image": "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=600&q=80",
+      "icon": "Clock"
+    },
+    {
+      "id": "cat5",
+      "name": "Pantry",
+      "description": "Essential cooking oils, rice & spices",
+      "image": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
+      "icon": "Truck"
+    },
+    {
+      "id": "cat6",
+      "name": "Snacks & Sweets",
+      "description": "Delicious chocolates & crispy snacks",
+      "image": "https://images.unsplash.com/photo-1599599810694-b5b37304c041?auto=format&fit=crop&w=600&q=80",
+      "icon": "Sparkles"
+    }
+  ]
+}
