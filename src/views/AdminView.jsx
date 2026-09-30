@@ -225,19 +225,26 @@ export default function AdminView() {
 
   const handleSaveCategory = (e) => {
     e.preventDefault();
+    if (!catName.trim()) return;
+
     if (editingCategory) {
       updateCategory(editingCategory.id || editingCategory._id, {
-        name: catName,
-        description: catDesc,
+        name: catName.trim(),
+        description: catDesc.trim(),
         image: catImage
       });
     } else {
       addCategory({
-        name: catName,
-        description: catDesc,
-        image: catImage
+        name: catName.trim(),
+        description: catDesc.trim(),
+        image: catImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'
       });
     }
+
+    setCatName('');
+    setCatDesc('');
+    setCatImage('');
+    setEditingCategory(null);
     setShowCategoryModal(false);
   };
 
@@ -1272,7 +1279,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* Add / Edit Category Modal (MongoDB) */}
+      {/* Add / Edit Category Modal */}
       {showCategoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
           <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-[#b08b68]/40 max-w-lg w-full space-y-4">
@@ -1358,7 +1365,7 @@ export default function AdminView() {
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl btn-warm font-bold text-sm shadow-lg cursor-pointer"
                 >
-                  {editingCategory ? 'Update Category' : 'Save to MongoDB'}
+                  {editingCategory ? 'Update Category' : 'Save Category'}
                 </button>
               </div>
             </form>

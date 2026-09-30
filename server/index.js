@@ -430,11 +430,11 @@ app.get('/api/categories', async (req, res) => {
 
 // Category Management
 app.post('/api/categories', authenticateToken, authorizeRoles('admin', 'developer'), async (req, res) => {
-  const { name, description, image, icon } = req.body;
+  const { id, name, description, image, icon } = req.body;
   const newCatObj = {
-    id: 'cat_' + Date.now(),
-    name: name || 'New Category',
-    description: description || '',
+    id: id || ('cat_' + Date.now()),
+    name: name ? name.trim() : 'New Category',
+    description: description ? description.trim() : '',
     image: image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80',
     icon: icon || 'Tag'
   };

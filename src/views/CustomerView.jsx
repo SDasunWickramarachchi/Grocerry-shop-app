@@ -74,46 +74,102 @@ export default function CustomerView({ isCartOpen, setIsCartOpen }) {
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         
-        {/* Search & Filter Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        {/* Prominent Search Bar */}
+        <div className="max-w-xl mx-auto mb-8">
+          <div className="relative">
+            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
             <input
               type="text"
-              placeholder="Search organic fruits, fresh milk, coffee..."
+              placeholder="Search for products, fresh milk, organic fruits..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full glass-input rounded-2xl pl-10 pr-4 py-2.5 text-sm"
+              className="w-full glass-input rounded-full pl-12 pr-10 py-3 text-sm font-semibold shadow-xl border-slate-700/80 focus:border-emerald-500/60"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-3.5 text-slate-500 hover:text-slate-300"
+                className="absolute right-4 top-3.5 text-slate-500 hover:text-slate-300"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
+        </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-            {categoryNames.map((cat) => (
+        {/* Visual Circular Category Selector Grid (onlinekade style) */}
+        <div className="mb-10 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-400" />
+              <span>Explore Categories</span>
+            </h2>
+            {selectedCategory !== 'All' && (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/20'
-                    : 'glass-panel text-slate-400 hover:text-white hover:bg-slate-800/80'
-                }`}
+                onClick={() => setSelectedCategory('All')}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
               >
-                {cat}
+                <span>Show All Categories</span>
+                <X className="w-3.5 h-3.5" />
               </button>
-            ))}
+            )}
           </div>
 
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-6 justify-items-center">
+            
+            {/* 'All' Category Circle */}
+            <button
+              onClick={() => setSelectedCategory('All')}
+              className="group flex flex-col items-center cursor-pointer transition transform active:scale-95"
+            >
+              <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl ${
+                selectedCategory === 'All'
+                  ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-slate-950 ring-4 ring-emerald-500/40 scale-105'
+                  : 'bg-slate-900/90 border border-slate-800 text-emerald-400 hover:border-emerald-500/50 hover:bg-slate-800'
+              }`}>
+                <Sparkles className="w-8 h-8 group-hover:rotate-12 transition duration-300" />
+              </div>
+              <span className={`text-xs font-bold text-center mt-2.5 line-clamp-2 transition ${
+                selectedCategory === 'All' ? 'text-emerald-400 font-extrabold' : 'text-slate-300 group-hover:text-white'
+              }`}>
+                All Items
+              </span>
+            </button>
+
+            {/* Dynamic Category Circles */}
+            {storeCategories.map((cat) => {
+              const isSelected = selectedCategory === cat.name;
+              return (
+                <button
+                  key={cat.id || cat._id}
+                  onClick={() => setSelectedCategory(cat.name)}
+                  className="group flex flex-col items-center cursor-pointer transition transform active:scale-95"
+                >
+                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden flex items-center justify-center transition-all duration-300 shadow-xl relative bg-slate-900 border ${
+                    isSelected
+                      ? 'ring-4 ring-emerald-500 border-emerald-500 scale-105'
+                      : 'border-slate-800 hover:border-emerald-500/40 hover:bg-slate-800'
+                  }`}>
+                    {cat.image ? (
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Tag className="w-7 h-7 text-emerald-400" />
+                    )}
+                  </div>
+                  <span className={`text-xs font-bold text-center mt-2.5 line-clamp-2 transition max-w-[85px] sm:max-w-[96px] ${
+                    isSelected ? 'text-emerald-400 font-extrabold' : 'text-slate-300 group-hover:text-white'
+                  }`}>
+                    {cat.name}
+                  </span>
+                </button>
+              );
+            })}
+
+          </div>
         </div>
 
         {/* Product Grid */}
