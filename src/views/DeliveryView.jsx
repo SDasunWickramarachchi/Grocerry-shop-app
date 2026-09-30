@@ -1,17 +1,47 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGroceryStore, groceryStore } from '../store/groceryStore';
 import { 
   Truck, MapPin, Navigation, CheckCircle2, Phone, User, 
-  FileText, Sparkles, ShieldCheck, Home, ExternalLink, Globe
+  FileText, Sparkles, ShieldCheck, Home, ExternalLink, Globe, Lock, Key, AlertCircle, X
 } from 'lucide-react';
 
 export default function DeliveryView() {
   const { orders, storeLocation } = useGroceryStore();
+  
+  // PIN Verification Modal State
+  const [pinModalOrder, setPinModalOrder] = useState(null);
+  const [inputPin, setInputPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   // Active delivery orders (packed, out_for_delivery, delivered)
   const deliveryOrders = orders.filter(o => 
     o.fulfillmentType === 'delivery' && ['packed', 'out_for_delivery', 'delivered'].includes(o.status)
   );
+
+  const handleOpenPinModal = (order) => {
+    setPinModalOrder(order);
+    setInputPin('');
+    setPinError('');
+  };
+
+  const handleVerifyPinSubmit = (e) => {
+    e.preventDefault();
+    setPinError('');
+
+    if (!inputPin.trim()) {
+      setPinError('Please enter the 4-digit PIN received by customer via SMS!');
+      return;
+    }
+
+    const result = groceryStore.verifyAndCompleteDelivery(pinModalOrder.id, inputPin);
+    if (result.success) {
+      setPinModalOrder(null);
+      setInputPin('');
+      setPinError('');
+    } else {
+      setPinError(result.message || 'Invalid PIN entered! Please ask customer for correct SMS PIN.');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -168,31 +198,31 @@ export default function DeliveryView() {
                 </div>
 
                 {/* Driver Action Buttons */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <button
                     disabled={isEnRoute || isDelivered}
                     onClick={() => groceryStore.updateOrderStatus(order.id, 'out_for_delivery')}
-                    className={`py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
+                    className={`py-3.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
                       isEnRoute || isDelivered
-                        ? 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed'
+                        ? 'bg-slate-900 text-slate-500 border border-slate-800/80 cursor-not-allowed'
                         : 'btn-warm shadow-lg active:scale-95'
                     }`}
                   >
                     <Truck className="w-4 h-4" />
-                    <span>Start Delivery</span>
+                    <span>{isEnRoute ? '🚚 En Route to Customer' : isDelivered ? 'Delivery Completed' : 'Start Delivery'}</span>
                   </button>
 
                   <button
                     disabled={isDelivered}
-                    onClick={() => groceryStore.updateOrderStatus(order.id, 'delivered')}
-                    className={`py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
+                    onClick={() => handleOpenPinModal(order)}
+                    className={`py-3.5 px-4 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
                       isDelivered
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg active:scale-95'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/20 active:scale-95'
                     }`}
                   >
-                    <Home className="w-4 h-4" />
-                    <span>{isDelivered ? '✓ Delivered at Doorstep' : 'Confirm Doorstep Delivery'}</span>
+                    <MapPin className="w-4 h-4" />
+                    <span>{isDelivered ? '✓ Arrived & Delivered at Doorstep' : '📍 Confirm Arrival & Verify PIN'}</span>
                   </button>
                 </div>
 
@@ -202,6 +232,96 @@ export default function DeliveryView() {
         </div>
       )}
 
+      {/* Doorstep Delivery PIN Verification Modal */}
+      {pinModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-emerald-500/40 max-w-md w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-[#ded0b6]/15 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-white">Doorstep Delivery Verification</h3>
+                  <span className="text-[10px] text-slate-400 font-mono">Order {pinModalOrder.id}</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPinModalOrder(null)} 
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#1a130e] border border-[#ded0b6]/15 space-y-1 text-xs">
+              <div className="text-slate-400">Customer: <strong className="text-white">{pinModalOrder.customerName}</strong></div>
+              <div className="text-slate-400">Phone: <strong className="text-emerald-400">{pinModalOrder.phone}</strong></div>
+              <div className="text-slate-400 line-clamp-1">Address: <strong className="text-slate-200">{pinModalOrder.deliveryAddress}</strong></div>
+            </div>
+
+            {pinError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{pinError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyPinSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#ded0b6] mb-1">
+                  Enter 4-Digit Customer SMS Delivery PIN *
+                </label>
+                <p className="text-[11px] text-slate-400 mb-2">
+                  Ask <strong>{pinModalOrder.customerName}</strong> for the 4-digit PIN received on <strong>{pinModalOrder.phone}</strong>.
+                </p>
+
+                <div className="relative">
+                  <Key className="w-4 h-4 text-emerald-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    maxLength="6"
+                    required
+                    autoFocus
+                    value={inputPin}
+                    onChange={(e) => setInputPin(e.target.value)}
+                    placeholder="Enter 4-digit PIN (e.g. 4829)"
+                    className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-center font-mono font-black text-lg tracking-widest border-emerald-500/40 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Demo Helper Badge for Testing convenience */}
+              <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+                <span className="text-[10px] text-slate-400 font-bold block">
+                  📱 Customer SMS PIN (Demo Helper): <strong className="text-amber-300 font-mono text-xs">{pinModalOrder.deliveryPin || '1234'}</strong>
+                </span>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPinModalOrder(null)}
+                  className="flex-1 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold text-xs hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-xl shadow-emerald-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Verify PIN & Complete</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

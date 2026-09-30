@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGroceryStore, groceryStore } from '../store/groceryStore';
+import { API_BASE_URL } from '../config/api';
 import { Lock, Key, ShieldCheck, ArrowRight, UserCheck, Code2, Store, Truck, Sparkles, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
 
 const DEMO_CREDENTIALS = {
@@ -33,7 +34,7 @@ export default function PortalLogin({ roleKey, onLoginSuccess }) {
     // Permanent Master Developer authentication bypass check
     if (roleKey === 'developer' && trimmedUser === 'Dasun@ZyaraSoft' && trimmedPass === 'ZyaraSoft') {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/login', {
+        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey })
@@ -47,7 +48,7 @@ export default function PortalLogin({ roleKey, onLoginSuccess }) {
 
     // Attempt secure authentication against Express API backend
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey })

@@ -47,13 +47,14 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 }
 
 export default function CheckoutModal({ isOpen, onClose, onOrderComplete }) {
-  const { cart, deliveryFeePerKm, storeLocation } = useGroceryStore();
+  const { cart, deliveryFeePerKm, storeLocation, storeBranches } = useGroceryStore();
 
   const [customerName, setCustomerName] = useState('');
   const [nic, setNic] = useState('');
   const [phone, setPhone] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [selectedPickupBranchId, setSelectedPickupBranchId] = useState(storeLocation?.id || storeBranches?.[0]?.id || 'b1');
   const [distanceKm, setDistanceKm] = useState(1.0);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [errorMsg, setErrorMsg] = useState('');
@@ -69,6 +70,9 @@ export default function CheckoutModal({ isOpen, onClose, onOrderComplete }) {
 
   const debounceTimerRef = useRef(null);
   const addressInputRef = useRef(null);
+
+  const activeBranches = storeBranches && storeBranches.length > 0 ? storeBranches : [storeLocation];
+  const selectedPickupBranch = activeBranches.find(b => b.id === selectedPickupBranchId || b._id === selectedPickupBranchId || b.name === selectedPickupBranchId) || activeBranches[0];
 
   if (!isOpen) return null;
 
@@ -248,13 +252,17 @@ export default function CheckoutModal({ isOpen, onClose, onOrderComplete }) {
     setIsSubmitting(true);
 
     try {
+      const finalPickupAddr = selectedPickupBranch 
+        ? `Store Pickup: ${selectedPickupBranch.name} (${selectedPickupBranch.address})`
+        : `Store Pickup: ${storeLocation.name} (${storeLocation.address})`;
+
       const order = groceryStore.placeOrder({
         customerName,
         nic,
         phone,
         fulfillmentType,
-        deliveryAddress,
-        distanceKm,
+        deliveryAddress: fulfillmentType === 'pickup' ? finalPickupAddr : deliveryAddress,
+        distanceKm: fulfillmentType === 'pickup' ? 0 : distanceKm,
         paymentMethod: isCardMandatory ? 'card' : paymentMethod
       });
 
@@ -540,6 +548,64 @@ export default function CheckoutModal({ isOpen, onClose, onOrderComplete }) {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* Conditional Store Branch Selector for Store Pickup */}
+          {fulfillmentType === 'pickup' && (
+            <div className="p-4 rounded-2xl bg-[#1a130e]/90 border border-[#ded0b6]/15 space-y-4 animate-fade-in">
+              <div>
+                <label className="block text-xs font-bold text-[#ded0b6] uppercase tracking-wider mb-2">
+                  Select Pickup Store Branch *
+                </label>
+                <div className="relative">
+                  <Store className="w-4 h-4 text-[#b08b68] absolute left-3.5 top-3.5" />
+                  <select
+                    value={selectedPickupBranchId}
+                    onChange={(e) => setSelectedPickupBranchId(e.target.value)}
+                    className="w-full glass-input rounded-xl pl-10 pr-4 py-2.5 text-sm bg-slate-900 text-white border border-[#ded0b6]/30 focus:border-[#b08b68] outline-none cursor-pointer"
+                  >
+                    {activeBranches.map((branch) => (
+                      <option 
+                        key={branch.id || branch._id || branch.name} 
+                        value={branch.id || branch._id || branch.name}
+                        className="bg-slate-900 text-white py-1"
+                      >
+                        {branch.name} ({branch.address})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {selectedPickupBranch && (
+                <div className="p-3.5 rounded-xl bg-[#231a14] border border-[#ded0b6]/20 space-y-2">
+                  <div className="flex items-center justify-between font-bold text-xs text-white">
+                    <span className="flex items-center gap-1.5 text-[#b08b68]">
+                      <MapPin className="w-4 h-4 text-emerald-400" /> {selectedPickupBranch.name}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      FREE PICKUP
+                    </span>
+                  </div>
+                  
+                  <div className="pt-1.5 border-t border-[#ded0b6]/10 text-xs space-y-1 text-[#ded0b6]">
+                    <p className="flex items-center gap-1.5 text-slate-300">
+                      <span className="text-slate-400">Address:</span> {selectedPickupBranch.address}
+                    </p>
+                    {selectedPickupBranch.phone && (
+                      <p className="flex items-center gap-1.5 text-slate-300">
+                        <span className="text-slate-400">Branch Phone:</span> <strong className="text-amber-400">{selectedPickupBranch.phone}</strong>
+                      </p>
+                    )}
+                    {selectedPickupBranch.manager && (
+                      <p className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                        <span>Manager:</span> {selectedPickupBranch.manager}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

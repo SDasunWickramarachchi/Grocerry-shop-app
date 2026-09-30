@@ -15,11 +15,13 @@ export default function App() {
   const { cart } = useGroceryStore();
   const [activeRoute, setActiveRoute] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [authRoles, setAuthRoles] = useState({
-    developer: false,
-    admin: false,
-    staff: false,
-    delivery: false,
+  const [authRoles, setAuthRoles] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ungikade_authRoles');
+      return saved ? JSON.parse(saved) : { developer: false, admin: false, staff: false, delivery: false };
+    } catch (e) {
+      return { developer: false, admin: false, staff: false, delivery: false };
+    }
   });
 
   // Sync route with URL hash or pathname
@@ -49,11 +51,20 @@ export default function App() {
   };
 
   const handleLoginSuccess = (roleKey) => {
-    setAuthRoles(prev => ({ ...prev, [roleKey]: true }));
+    setAuthRoles(prev => {
+      const updated = { ...prev, [roleKey]: true };
+      localStorage.setItem('ungikade_authRoles', JSON.stringify(updated));
+      return updated;
+    });
+    groceryStore.syncFromDatabase();
   };
 
   const handleLogout = (roleKey) => {
-    setAuthRoles(prev => ({ ...prev, [roleKey]: false }));
+    setAuthRoles(prev => {
+      const updated = { ...prev, [roleKey]: false };
+      localStorage.setItem('ungikade_authRoles', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);

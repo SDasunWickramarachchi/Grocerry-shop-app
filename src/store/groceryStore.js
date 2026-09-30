@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api';
 
 // Initial Mock Product Data
 const DEFAULT_PRODUCTS = [
@@ -153,6 +154,7 @@ const DEFAULT_ORDERS = [
     totalAmount: 3460,
     paymentMethod: 'card',
     status: 'placed',
+    deliveryPin: '1234',
     packedItems: ['p1'],
     deliveryCoordinates: { lat: 6.9163, lng: 79.8540 },
     createdAt: new Date(Date.now() - 3600000).toISOString(),
@@ -318,13 +320,22 @@ export const groceryStore = {
     setStored('storeBranches', globalState.storeBranches);
     groceryStore.log(`Admin created new store branch: ${newBranch.name} (${newBranch.address}).`, 'admin');
     groceryStore.pushNotification('Branch Created', `${newBranch.name} added to store network!`, 'success');
+
+    try {
+      fetch(`${API_BASE_URL}/api/branches`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newBranch)
+      }).catch(err => console.log('API branch sync error:', err));
+    } catch(e){}
+
     notifySubscribers();
   },
 
   updateStoreBranch: (branchId, updatedData) => {
     let updatedBranch = null;
     const updatedBranches = globalState.storeBranches.map(b => {
-      if (b.id === branchId || b.name === branchId) {
+      if (b.id === branchId || b._id === branchId || b.name === branchId) {
         updatedBranch = {
           ...b,
           name: updatedData.name || b.name,
@@ -343,18 +354,29 @@ export const groceryStore = {
     setStored('storeBranches', updatedBranches);
 
     // If active branch was modified, sync storeLocation
-    if (updatedBranch && (globalState.storeLocation.id === branchId || globalState.storeLocation.name === updatedBranch.name)) {
+    if (updatedBranch && (globalState.storeLocation.id === branchId || globalState.storeLocation._id === branchId || globalState.storeLocation.name === updatedBranch.name)) {
       globalState.storeLocation = updatedBranch;
       setStored('storeLocation', globalState.storeLocation);
     }
 
     groceryStore.log(`Admin updated store branch: ${updatedData.name || branchId}.`, 'admin');
     groceryStore.pushNotification('Branch Updated', `Store branch details updated successfully!`, 'success');
+
+    if (updatedBranch) {
+      try {
+        fetch(`${API_BASE_URL}/api/branches/${branchId}`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify(updatedBranch)
+        }).catch(err => console.log('API branch sync error:', err));
+      } catch(e){}
+    }
+
     notifySubscribers();
   },
 
   deleteStoreBranch: (branchId) => {
-    const targetBranch = globalState.storeBranches.find(b => b.id === branchId || b.name === branchId);
+    const targetBranch = globalState.storeBranches.find(b => b.id === branchId || b._id === branchId || b.name === branchId);
     if (!targetBranch) return;
 
     if (globalState.storeBranches.length <= 1) {
@@ -362,17 +384,26 @@ export const groceryStore = {
       return;
     }
 
-    const updatedBranches = globalState.storeBranches.filter(b => b.id !== targetBranch.id && b.name !== targetBranch.name);
+    const targetId = targetBranch.id || targetBranch._id;
+    const updatedBranches = globalState.storeBranches.filter(b => b.id !== targetId && b._id !== targetId && b.name !== targetBranch.name);
     globalState.storeBranches = updatedBranches;
     setStored('storeBranches', updatedBranches);
 
-    if (globalState.storeLocation.id === targetBranch.id || globalState.storeLocation.name === targetBranch.name) {
+    if (globalState.storeLocation.id === targetId || globalState.storeLocation._id === targetId || globalState.storeLocation.name === targetBranch.name) {
       globalState.storeLocation = updatedBranches[0];
       setStored('storeLocation', globalState.storeLocation);
     }
 
     groceryStore.log(`Admin deleted store branch: ${targetBranch.name}.`, 'admin');
     groceryStore.pushNotification('Branch Deleted', `Store branch '${targetBranch.name}' has been deleted.`, 'info');
+
+    try {
+      fetch(`${API_BASE_URL}/api/branches/${targetId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      }).catch(err => console.log('API branch delete error:', err));
+    } catch(e){}
+
     notifySubscribers();
   },
 
@@ -451,6 +482,7 @@ export const groceryStore = {
     }
 
     const orderId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+    const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
     
     let destLat = (parseFloat(globalState.storeLocation.lat) + (Math.random() - 0.5) * 0.02).toFixed(4);
     let destLng = (parseFloat(globalState.storeLocation.lng) + (Math.random() - 0.5) * 0.02).toFixed(4);
@@ -468,6 +500,7 @@ export const groceryStore = {
       totalAmount,
       paymentMethod,
       status: 'placed',
+      deliveryPin,
       packedItems: [],
       deliveryCoordinates: { lat: destLat, lng: destLng },
       createdAt: new Date().toISOString(),
@@ -485,19 +518,39 @@ export const groceryStore = {
     globalState.cart = [];
     setStored('cart', []);
 
-    groceryStore.log(`New Order ${orderId} placed by ${customerName} (${paymentMethod.toUpperCase()}, Total: LKR ${totalAmount}).`, 'order');
+    groceryStore.log(`New Order ${orderId} placed by ${customerName} (${paymentMethod.toUpperCase()}, Total: LKR ${totalAmount}). Delivery PIN: ${deliveryPin}`, 'order');
     
-    const smsMsg = `UNGI KADE: Order ${orderId} Placed! Total LKR ${totalAmount}. Staff is packing your items.`;
+    // 1. SMS Stage: Order Placed (includes 4-digit PIN for customer)
+    const smsMsg = fulfillmentType === 'delivery'
+      ? `UNGI KADE: Order ${orderId} Placed! Total LKR ${totalAmount}. Your Delivery Verification PIN is [${deliveryPin}]. Please give this PIN to driver on arrival.`
+      : `UNGI KADE: Order ${orderId} Placed! Total LKR ${totalAmount}. We are preparing your pickup items.`;
     groceryStore.logSms(phone, smsMsg, 'Order Placed');
 
     groceryStore.pushNotification(
       '🎉 Order Placed Successfully!',
-      `Order ${orderId} submitted! SMS sent to ${phone}.`,
+      `Order ${orderId} submitted! Delivery PIN [${deliveryPin}] sent via SMS to ${phone}.`,
       'success'
     );
 
     notifySubscribers();
     return newOrder;
+  },
+
+  verifyAndCompleteDelivery: (orderId, inputPin) => {
+    const order = globalState.orders.find(o => o.id === orderId);
+    if (!order) return { success: false, message: 'Order not found!' };
+
+    const expectedPin = (order.deliveryPin || '1234').toString().trim();
+    const cleanInput = (inputPin || '').toString().trim();
+
+    if (cleanInput !== expectedPin) {
+      groceryStore.pushNotification('Invalid Delivery PIN', 'The PIN entered does not match customer SMS PIN!', 'error');
+      return { success: false, message: `Invalid PIN! Please ask ${order.customerName} for the 4-digit PIN received via SMS.` };
+    }
+
+    groceryStore.updateOrderStatus(orderId, 'delivered');
+    groceryStore.pushNotification('🎉 Delivery Verified!', `Order ${orderId} PIN [${cleanInput}] verified successfully!`, 'success');
+    return { success: true };
   },
 
   toggleItemPacked: (orderId, productId) => {
@@ -534,11 +587,13 @@ export const groceryStore = {
       groceryStore.log(`Order ${orderId} status changed to '${newStatus.toUpperCase()}'.`, 'status');
 
       if (newStatus === 'packed' || newStatus === 'confirmed') {
-        const smsMsg = `UNGI KADE: Order ${orderId} Confirmed & Packed for ${updatedOrder.fulfillmentType === 'delivery' ? 'delivery dispatch' : 'store pickup'}!`;
-        groceryStore.logSms(updatedOrder.phone, smsMsg, 'Order Confirmed');
+        // 2. SMS Stage: Order Packed (includes 4-digit PIN)
+        const pinText = updatedOrder.fulfillmentType === 'delivery' ? ` Delivery Verification PIN is [${updatedOrder.deliveryPin || '1234'}].` : '';
+        const smsMsg = `UNGI KADE: Order ${orderId} is Packed & Ready for ${updatedOrder.fulfillmentType === 'delivery' ? 'delivery dispatch' : 'store pickup'}!${pinText}`;
+        groceryStore.logSms(updatedOrder.phone, smsMsg, 'Order Packed');
         
         groceryStore.pushNotification(
-          '🛍️ Order Confirmed!',
+          '🛍️ Order Packed!',
           `Store Staff confirmed Order ${orderId}! SMS confirmation dispatched to ${updatedOrder.phone}.`,
           'success'
         );
@@ -549,9 +604,13 @@ export const groceryStore = {
           'info'
         );
       } else if (newStatus === 'delivered') {
+        // 3. SMS Stage: Order on Door Steps (Delivered & PIN Verified)
+        const smsMsg = `UNGI KADE: Order ${orderId} has arrived on your doorsteps and delivery PIN [${updatedOrder.deliveryPin || '1234'}] was verified! Thank you for shopping with UNGI KADE.`;
+        groceryStore.logSms(updatedOrder.phone, smsMsg, 'On Doorsteps');
+
         groceryStore.pushNotification(
-          '🏡 Delivered to Your Doorstep!',
-          `Order ${orderId} delivered!`,
+          '🏡 Delivered to Doorstep!',
+          `Order ${orderId} delivered! SMS doorstep notification sent to ${updatedOrder.phone}.`,
           'success'
         );
       }
@@ -581,7 +640,7 @@ export const groceryStore = {
 
     // Sync product to database backend
     try {
-      fetch('http://localhost:5000/api/products', {
+      fetch(`${API_BASE_URL}/api/products`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newProduct)
@@ -607,7 +666,7 @@ export const groceryStore = {
 
     if (updatedTarget) {
       try {
-        fetch(`http://localhost:5000/api/products/${productId}`, {
+        fetch(`${API_BASE_URL}/api/products/${productId}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
           body: JSON.stringify(updatedTarget)
@@ -633,7 +692,7 @@ export const groceryStore = {
 
     // Sync with API backend
     try {
-      fetch('http://localhost:5000/api/categories', {
+      fetch(`${API_BASE_URL}/api/categories`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(newCat)
@@ -656,7 +715,7 @@ export const groceryStore = {
     groceryStore.pushNotification('Category Updated', `Category updated successfully!`, 'info');
 
     try {
-      fetch(`http://localhost:5000/api/categories/${id}`, {
+      fetch(`${API_BASE_URL}/api/categories/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify(updatedFields)
@@ -675,7 +734,7 @@ export const groceryStore = {
     groceryStore.pushNotification('Category Removed', `Category removed successfully!`, 'warning');
 
     try {
-      fetch(`http://localhost:5000/api/categories/${id}`, {
+      fetch(`${API_BASE_URL}/api/categories/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       }).catch(err => console.log('API sync status:', err));
@@ -701,7 +760,7 @@ export const groceryStore = {
     groceryStore.pushNotification('Registration Submitted', `Account ${newUser.username} is pending approval!`, 'info');
 
     try {
-      fetch('http://localhost:5000/api/auth/register', {
+      fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
@@ -724,7 +783,7 @@ export const groceryStore = {
     groceryStore.pushNotification('Account Approved', `User account approved!`, 'success');
 
     try {
-      fetch(`http://localhost:5000/api/users/${userId}/status`, {
+      fetch(`${API_BASE_URL}/api/users/${userId}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status: 'approved' })
@@ -746,7 +805,7 @@ export const groceryStore = {
     groceryStore.pushNotification('Account Rejected', `User registration rejected.`, 'warning');
 
     try {
-      fetch(`http://localhost:5000/api/users/${userId}/status`, {
+      fetch(`${API_BASE_URL}/api/users/${userId}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status: 'rejected' })
@@ -792,8 +851,58 @@ export const groceryStore = {
     localStorage.removeItem('ungikade_systemLogs');
     groceryStore.pushNotification('Database Reset', 'Store reset to default mock state.', 'info');
     notifySubscribers();
+  },
+
+  syncFromDatabase: async () => {
+    try {
+      // 1. Sync Categories
+      const catRes = await fetch(`${API_BASE_URL}/api/categories`);
+      if (catRes.ok) {
+        const cats = await catRes.json();
+        if (Array.isArray(cats) && cats.length > 0) {
+          globalState.categories = cats;
+          setStored('categories', cats);
+        }
+      }
+
+      // 2. Sync Store Branches
+      const branchRes = await fetch(`${API_BASE_URL}/api/branches`);
+      if (branchRes.ok) {
+        const branches = await branchRes.json();
+        if (Array.isArray(branches) && branches.length > 0) {
+          globalState.storeBranches = branches;
+          setStored('storeBranches', branches);
+
+          const activeId = globalState.storeLocation.id || globalState.storeLocation._id;
+          const foundActive = branches.find(b => b.id === activeId || b._id === activeId || b.name === globalState.storeLocation.name);
+          if (foundActive) {
+            globalState.storeLocation = foundActive;
+          } else {
+            globalState.storeLocation = branches[0];
+          }
+          setStored('storeLocation', globalState.storeLocation);
+        }
+      }
+
+      // 3. Sync Products
+      const prodRes = await fetch(`${API_BASE_URL}/api/products`);
+      if (prodRes.ok) {
+        const prods = await prodRes.json();
+        if (Array.isArray(prods) && prods.length > 0) {
+          globalState.products = prods;
+          setStored('products', prods);
+        }
+      }
+
+      notifySubscribers();
+    } catch (err) {
+      console.log('Database sync status:', err);
+    }
   }
 };
+
+// Initial non-blocking DB sync on module load
+groceryStore.syncFromDatabase();
 
 export function useGroceryStore() {
   const [state, setState] = useState(groceryStore.getState());
@@ -802,8 +911,18 @@ export function useGroceryStore() {
     const unsubscribe = groceryStore.subscribe((newState) => {
       setState(newState);
     });
-    return unsubscribe;
+
+    // Multi-Device Realtime Polling Sync (e.g., Cloudflare Pages across 2 devices)
+    const interval = setInterval(() => {
+      groceryStore.syncFromDatabase();
+    }, 8000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
-  return state;
+  return { ...state, ...groceryStore };
 }
+
