@@ -75,10 +75,10 @@ export default function AdminView() {
   const cashVolume = cashOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const forcedCardCount = orders.filter(o => o.totalAmount > 2500).length;
 
-  // SMS Analytics
+  // SMS Analytics (Order Placed, Order Packed, On Doorsteps)
   const smsPlacedCount = smsLogs.filter(s => s.stage === 'Order Placed').length;
   const smsPackedCount = smsLogs.filter(s => s.stage === 'Order Packed').length;
-  const smsDeliveryCount = smsLogs.filter(s => s.stage === 'Out for Delivery' || s.stage === 'Delivered').length;
+  const smsDoorstepsCount = smsLogs.filter(s => s.stage === 'On Doorsteps' || s.stage === 'Delivered').length;
 
   const handleUpdateFee = (e) => {
     e.preventDefault();
@@ -228,13 +228,13 @@ export default function AdminView() {
     if (!catName.trim()) return;
 
     if (editingCategory) {
-      updateCategory(editingCategory.id || editingCategory._id, {
+      groceryStore.updateCategory(editingCategory.id || editingCategory._id, {
         name: catName.trim(),
         description: catDesc.trim(),
         image: catImage
       });
     } else {
-      addCategory({
+      groceryStore.addCategory({
         name: catName.trim(),
         description: catDesc.trim(),
         image: catImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80'
@@ -685,7 +685,7 @@ export default function AdminView() {
                           <span>Edit</span>
                         </button>
                         <button
-                          onClick={() => deleteCategory(catId)}
+                          onClick={() => groceryStore.deleteCategory(catId)}
                           className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -811,9 +811,9 @@ export default function AdminView() {
                 </div>
 
                 <div className="glass-panel p-5 rounded-2xl border border-[#ded0b6]/15">
-                  <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Fulfillment SMS</span>
-                  <div className="text-3xl font-black text-emerald-400">{smsPackedCount + smsDeliveryCount}</div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">Packed, En Route & Doorstep alerts</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase block mb-1">Packed & Doorstep SMS</span>
+                  <div className="text-3xl font-black text-emerald-400">{smsPackedCount + smsDoorstepsCount}</div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">Packed ({smsPackedCount}) & Doorsteps ({smsDoorstepsCount})</span>
                 </div>
               </div>
 
