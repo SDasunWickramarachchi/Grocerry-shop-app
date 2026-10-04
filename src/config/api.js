@@ -3,10 +3,18 @@ export const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // If hosted on Cloudflare Pages or remote server with custom API hostname
-    return `${window.location.protocol}//${window.location.hostname}:5000`;
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // Static hosting providers (Cloudflare Pages, Vercel, Netlify, GitHub Pages) without VITE_API_URL set
+    if (host.endsWith('.pages.dev') || host.endsWith('.vercel.app') || host.endsWith('.netlify.app') || host.endsWith('.github.io')) {
+      return null; // Return null so app defaults to client-side local authentication and offline persistence
+    }
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      return `${window.location.protocol}//${host}:5000`;
+    }
   }
+
   return 'http://localhost:5000';
 };
 

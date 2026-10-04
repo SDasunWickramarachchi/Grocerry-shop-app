@@ -854,6 +854,7 @@ export const groceryStore = {
   },
 
   syncFromDatabase: async () => {
+    if (!API_BASE_URL) return;
     try {
       // 1. Sync Categories
       const catRes = await fetch(`${API_BASE_URL}/api/categories`);

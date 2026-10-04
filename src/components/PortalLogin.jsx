@@ -33,51 +33,69 @@ export default function PortalLogin({ roleKey, onLoginSuccess }) {
 
     // Permanent Master Developer authentication bypass check
     if (roleKey === 'developer' && trimmedUser === 'Dasun@ZyaraSoft' && trimmedPass === 'ZyaraSoft') {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey })
-        });
-        const data = await res.json();
-        if (data.token) groceryStore.setAuthToken(data.token);
-      } catch(e) {}
+      if (API_BASE_URL) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2000);
+          const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey }),
+            signal: controller.signal
+          });
+          clearTimeout(timer);
+          const data = await res.json();
+          if (data.token) groceryStore.setAuthToken(data.token);
+        } catch(e) {}
+      }
       onLoginSuccess('developer');
       return;
     }
 
-    // Attempt secure authentication against Express API backend
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey })
-      });
-      const data = await res.json();
+    // Attempt secure authentication against Express API backend (if configured & online)
+    if (API_BASE_URL) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: trimmedUser, password: trimmedPass, role: roleKey }),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        const data = await res.json();
 
-      if (res.ok && data.success) {
-        if (data.token) {
-          groceryStore.setAuthToken(data.token);
+        if (res.ok && data.success) {
+          if (data.token) {
+            groceryStore.setAuthToken(data.token);
+          }
+          onLoginSuccess(roleKey);
+          return;
+        } else if (data.message) {
+          setError(data.message);
+          return;
         }
-        onLoginSuccess(roleKey);
-        return;
-      } else if (data.message) {
-        setError(data.message);
-        return;
+      } catch (apiErr) {
+        console.log('API backend login offline fallback:', apiErr);
       }
-    } catch (apiErr) {
-      console.log('API backend login offline fallback:', apiErr);
     }
 
-    // Local state fallback (if server unreachable)
-    const matchedUser = users.find(u => u.username === trimmedUser);
+    // Local client-side authentication fallback (for Cloudflare Pages static host / offline mode)
+    const matchedUser = users.find(u => u.username.toLowerCase() === trimmedUser.toLowerCase());
 
     if (!matchedUser) {
-      if (isDemoEnabled && trimmedUser === config.user && trimmedPass === config.pass) {
+      // Check default demo portal credentials
+      if (trimmedUser === config.user && trimmedPass === config.pass) {
         onLoginSuccess(roleKey);
         return;
       }
       setError(`Invalid credentials for ${config.roleName}!`);
+      return;
+    }
+
+    if (matchedUser.password !== trimmedPass && !(trimmedUser === config.user && trimmedPass === config.pass)) {
+      setError(`Incorrect password for ${config.roleName}!`);
       return;
     }
 
